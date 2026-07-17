@@ -8,7 +8,7 @@ server/server.exe
 /server
 /.idea
 /logs
-*.onnx
+# *.onnx
 src-web/server-config.json
 model_preference.json
 setup-nsis-cache.ps1
@@ -21,3 +21,4 @@ node_modules
 /.agents
 /.trae
 *.py
+public/model_quantized.onnx
