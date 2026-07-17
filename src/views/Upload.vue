@@ -45,10 +45,18 @@
                     </label>
                     <input type="file" id="fileInput" ref="fileInput" accept="image/*" class="hidden" multiple @change="handleFileSelect">
 
-                    <button @click.stop="pasteImage" class="cta-pill secondary">
-                      <span>粘贴图片</span>
+                    <button @click.stop="pasteImage" class="cta-pill secondary" :disabled="isProcessing || isReadingClipboard">
+                      <span v-if="isReadingClipboard">正在读取剪贴板...</span>
+                      <span v-else-if="isProcessing">处理中...</span>
+                      <span v-else>粘贴图片</span>
                       <div class="btn-icon-island">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <svg v-if="isReadingClipboard" class="icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-linecap="round"/>
+                        </svg>
+                        <svg v-else-if="isProcessing" class="icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-linecap="round"/>
+                        </svg>
+                        <svg v-else class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                           <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke-linecap="round" stroke-linejoin="round"/>
                           <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
                         </svg>
@@ -189,6 +197,13 @@
       </div>
     </section>
 
+    <!-- Toast Message -->
+    <transition name="toast-fade">
+      <div v-if="isToastVisible" class="toast-message">
+        {{ toastMessage }}
+      </div>
+    </transition>
+
     <!-- Progress Dialog -->
     <div v-show="isProcessing" class="progress-overlay">
       <div class="progress-shell">
@@ -225,7 +240,10 @@ export default {
       progress: 0,
       statusMessage: '准备处理...',
       isDragOver: false,
-      autoProcessMode: false
+      autoProcessMode: false,
+      isReadingClipboard: false,
+      toastMessage: '',
+      isToastVisible: false
     }
   },
   computed: {
@@ -234,6 +252,13 @@ export default {
     }
   },
   methods: {
+    showToast(message, duration = 3000) {
+      this.toastMessage = message
+      this.isToastVisible = true
+      setTimeout(() => {
+        this.isToastVisible = false
+      }, duration)
+    },
     handleDropAreaClick(event) {
       const target = event.target
       if (target.tagName === 'BUTTON' || target.tagName === 'LABEL' ||
@@ -262,73 +287,84 @@ export default {
       this.addFiles(files)
     },
     async pasteImage() {
-      if (this.isProcessing) return
-      // 先尝试读取剪贴板中的图片
-      if (navigator.clipboard.read) {
-        try {
-          const clipboardItems = await navigator.clipboard.read()
-          for (const item of clipboardItems) {
-            // 优先检查图片类型
-            for (const type of item.types) {
-              if (type.startsWith('image/')) {
-                const autoProcess = localStorage.getItem('rmbg_auto_process') === 'yes'
-                this.isProcessing = true
-                this.progress = 0
-                this.statusMessage = '正在读取剪贴板图片...'
-                try {
-                  const blob = await item.getType(type)
-                  const file = new File([blob], `pasted-image-${Date.now()}.png`, { type })
-                  this.progress = 100
-                  this.statusMessage = '读取完成'
-                  this.addFiles([file])
-                } finally {
-                  // 如果不是自动处理模式，立即隐藏 Loading
-                  // 如果是自动处理模式，由 processAllImages() 管理 Loading
-                  if (!autoProcess) {
-                    this.isProcessing = false
+      if (this.isProcessing || this.isReadingClipboard) return
+
+      this.isReadingClipboard = true
+      this.showToast('正在读取剪贴板...')
+      try {
+        // 先尝试读取剪贴板中的图片
+        if (navigator.clipboard.read) {
+          try {
+            const clipboardItems = await navigator.clipboard.read()
+            for (const item of clipboardItems) {
+              // 优先检查图片类型
+              for (const type of item.types) {
+                if (type.startsWith('image/')) {
+                  this.isReadingClipboard = false
+                  const autoProcess = localStorage.getItem('rmbg_auto_process') === 'yes'
+                  this.isProcessing = true
+                  this.progress = 0
+                  this.statusMessage = '正在读取剪贴板图片...'
+                  try {
+                    const blob = await item.getType(type)
+                    const file = new File([blob], `pasted-image-${Date.now()}.png`, { type })
+                    this.progress = 100
+                    this.statusMessage = '读取完成'
+                    this.addFiles([file])
+                  } finally {
+                    // 如果不是自动处理模式，立即隐藏 Loading
+                    // 如果是自动处理模式，由 processAllImages() 管理 Loading
+                    if (!autoProcess) {
+                      this.isProcessing = false
+                    }
                   }
+                  return
                 }
-                return
+              }
+              // 检查文本内容是否为图片链接
+              if (item.types.includes('text/plain')) {
+                const blob = await item.getType('text/plain')
+                const text = (await blob.text()).trim()
+                if (this.isImageUrl(text)) {
+                  this.isReadingClipboard = false
+                  await this.downloadAndAddImage(text)
+                  return
+                }
+              }
+              if (item.types.includes('text/html')) {
+                const blob = await item.getType('text/html')
+                const html = await blob.text()
+                const urlMatch = html.match(/<img[^>]+src=["']([^"']+)["']/i)
+                if (urlMatch && this.isImageUrl(urlMatch[1])) {
+                  this.isReadingClipboard = false
+                  await this.downloadAndAddImage(urlMatch[1])
+                  return
+                }
               }
             }
-            // 检查文本内容是否为图片链接
-            if (item.types.includes('text/plain')) {
-              const blob = await item.getType('text/plain')
-              const text = (await blob.text()).trim()
-              if (this.isImageUrl(text)) {
-                await this.downloadAndAddImage(text)
-                return
-              }
-            }
-            if (item.types.includes('text/html')) {
-              const blob = await item.getType('text/html')
-              const html = await blob.text()
-              const urlMatch = html.match(/<img[^>]+src=["']([^"']+)["']/i)
-              if (urlMatch && this.isImageUrl(urlMatch[1])) {
-                await this.downloadAndAddImage(urlMatch[1])
-                return
-              }
-            }
+          } catch (e) {
+            console.warn('clipboard.read failed:', e)
           }
-        } catch (e) {
-          console.warn('clipboard.read failed:', e)
         }
-      }
 
-      // 如果 clipboard.read 不可用或没有找到图片，尝试读取文本
-      if (navigator.clipboard.readText) {
-        try {
-          const text = (await navigator.clipboard.readText()).trim()
-          if (this.isImageUrl(text)) {
-            await this.downloadAndAddImage(text)
-            return
+        // 如果 clipboard.read 不可用或没有找到图片，尝试读取文本
+        if (navigator.clipboard.readText) {
+          try {
+            const text = (await navigator.clipboard.readText()).trim()
+            if (this.isImageUrl(text)) {
+              this.isReadingClipboard = false
+              await this.downloadAndAddImage(text)
+              return
+            }
+          } catch (e) {
+            console.warn('clipboard.readText failed:', e)
           }
-        } catch (e) {
-          console.warn('clipboard.readText failed:', e)
         }
-      }
 
-      alert('剪贴板中没有图片')
+        this.showToast('剪贴板中没有图片')
+      } finally {
+        this.isReadingClipboard = false
+      }
     },
     isImageUrl(text) {
       // 只要是有效的 HTTP/HTTPS URL 就尝试下载
@@ -1203,6 +1239,45 @@ h1 {
     opacity: 1;
     transform: scale(1);
   }
+}
+
+/* Spinning animation */
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+/* Toast message */
+.toast-message {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.9);
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 9999px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 100;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2);
+}
+
+.toast-fade-enter-active,
+.toast-fade-leave-active {
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.toast-fade-enter-from,
+.toast-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-10px);
+}
+
+/* Button disabled state */
+.cta-pill:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 /* Mobile */

@@ -20,10 +20,12 @@ async function initONNXSession(modelPath = '/model_quantized.onnx') {
       // 全局配置，禁用JSEP
       ort.env.webgpu = false;
       ort.env.jsep = false;
+      ort.env.wasm.proxy = true
 
       // 配置 ONNX Runtime - 使用本地非多线程版本
       ort.env.wasm.numThreads = navigator.hardwareConcurrency || 4
-      ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.3/dist/'
+      ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.27.0/dist/'
+
 
       // 创建推理会话
       ortSession = await ort.InferenceSession.create(modelPath, {
