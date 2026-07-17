@@ -262,6 +262,7 @@ export default {
       this.addFiles(files)
     },
     async pasteImage() {
+      if (this.isProcessing) return
       // 先尝试读取剪贴板中的图片
       if (navigator.clipboard.read) {
         try {
@@ -270,6 +271,7 @@ export default {
             // 优先检查图片类型
             for (const type of item.types) {
               if (type.startsWith('image/')) {
+                const autoProcess = localStorage.getItem('rmbg_auto_process') === 'yes'
                 this.isProcessing = true
                 this.progress = 0
                 this.statusMessage = '正在读取剪贴板图片...'
@@ -280,7 +282,11 @@ export default {
                   this.statusMessage = '读取完成'
                   this.addFiles([file])
                 } finally {
-                  this.isProcessing = false
+                  // 如果不是自动处理模式，立即隐藏 Loading
+                  // 如果是自动处理模式，由 processAllImages() 管理 Loading
+                  if (!autoProcess) {
+                    this.isProcessing = false
+                  }
                 }
                 return
               }
@@ -473,12 +479,47 @@ export default {
           fileName: f.name
         }))
 
+        let modelLoaded = false
+        let modelLoadProgress = 0
+        let modelLoadInterval = null
+
         const results = await onnxProcessor.removeBackgroundBatch(
           imagesData,
           1024,
-          (current, total, fileName) => {
-            this.progress = 10 + (current / total) * 90
-            this.statusMessage = `正在处理: ${fileName} (${current + 1}/${total})`
+          (progressOrStage, total, fileName) => {
+            // 处理阶段标记（字符串）
+            if (typeof progressOrStage === 'string') {
+              // 只在第一次模型加载时使用模拟进度
+              if (progressOrStage === 'model-loading' && !modelLoaded) {
+                this.statusMessage = '正在加载模型...'
+                // 从当前进度开始模拟，每 200ms 增加 2%，最高到 18%
+                modelLoadProgress = this.progress
+                modelLoadInterval = setInterval(() => {
+                  if (modelLoadProgress < 18) {
+                    modelLoadProgress += 2
+                    this.progress = modelLoadProgress
+                  }
+                }, 200)
+              } else if (progressOrStage === 'model-loaded' && !modelLoaded) {
+                // 停止模拟进度，设置到 20%
+                if (modelLoadInterval) {
+                  clearInterval(modelLoadInterval)
+                  modelLoadInterval = null
+                }
+                modelLoaded = true
+                this.progress = 20
+              }
+              return
+            }
+
+            // 处理数字进度（图片处理阶段）
+            const current = progressOrStage
+            // 模型加载完成后，从 20% 开始；否则从 0% 开始
+            const baseProgress = modelLoaded ? 20 : 0
+            this.progress = baseProgress + (current / total) * (modelLoaded ? 80 : 100)
+            if (fileName) {
+              this.statusMessage = `正在处理: ${fileName} (${current + 1}/${total})`
+            }
           }
         )
 

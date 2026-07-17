@@ -17,6 +17,9 @@ async function initONNXSession(modelPath = '/model_quantized.onnx') {
   modelLoadPromise = (async () => {
     try {
       console.log('正在加载 ONNX 模型...')
+      // 全局配置，禁用JSEP
+      ort.env.webgpu = false;
+      ort.env.jsep = false;
 
       // 配置 ONNX Runtime - 使用本地非多线程版本
       ort.env.wasm.numThreads = navigator.hardwareConcurrency || 4
@@ -185,11 +188,12 @@ function applyMask(originalDataUrl, maskCanvas) {
 }
 
 // 主处理函数：移除图片背景
-async function removeBackground(dataUrl, inputSize = 1024) {
+async function removeBackground(dataUrl, inputSize = 1024, onProgress) {
   try {
     // 确保模型已加载
+    if (onProgress) onProgress('model-loading')
     const session = await initONNXSession()
-
+    if (onProgress) onProgress('model-loaded')
 
     // 预处理图片
     const { tensor, originalWidth, originalHeight } = await preprocessImage(dataUrl, inputSize, inputSize)
@@ -240,7 +244,7 @@ async function removeBackgroundBatch(imagesData, inputSize = 1024, onProgress) {
 
 
     try {
-      const result = await removeBackground(item.image, inputSize)
+      const result = await removeBackground(item.image, inputSize, onProgress)
       results.push({
         fileName: item.fileName,
         ...result
