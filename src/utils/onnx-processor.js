@@ -26,7 +26,7 @@ async function getCapabilities() {
 
 // 根据浏览器能力获取 ort CDN 地址
 async function getOrtSrc() {
-  const prefix = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/`
+  const prefix = `https://cdn.jsdmirror.com/npm/onnxruntime-web@${ORT_VERSION}/dist/`
   const cap = await getCapabilities()
   if (cap.webgpu) return `${prefix}ort.webgpu.min.js`
   if (cap.wasm) {
@@ -69,7 +69,7 @@ async function initONNXSession(modelPath = '/model_quantized.onnx') {
       console.log('正在加载 ONNX 模型...')
       ort.env.wasm.proxy = true
       ort.env.wasm.numThreads = navigator.hardwareConcurrency || 4
-      ort.env.wasm.wasmPaths = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/`
+      ort.env.wasm.wasmPaths = `https://cdn.jsdmirror.com/npm/onnxruntime-web@${ORT_VERSION}/dist/`
 
       // 创建推理会话
       ortSession = await ort.InferenceSession.create(modelPath, {
