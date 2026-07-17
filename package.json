@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "vite build && gh-pages -d dist",
+    "deploy": "vite build && powershell -Command \"Remove-Item -Force dist/assets/*.wasm\" && gh-pages -d dist",
     "onlydeploy": "gh-pages -d dist"
   },
   "dependencies": {

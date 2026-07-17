@@ -1,8 +1,55 @@
-import * as ort from 'onnxruntime-web'
-
 let ortSession = null
 let isModelLoaded = false
 let modelLoadPromise = null
+let ortLoadPromise = null
+
+const ORT_VERSION = '1.27.0'
+
+// 检测浏览器能力，选择合适的 ort 构建
+async function getCapabilities() {
+  const webgpu = typeof navigator.gpu !== 'undefined' && await navigator.gpu.requestAdapter()
+  const wasm = typeof WebAssembly === 'object' && typeof WebAssembly.instantiate === 'function'
+  const simd = wasm && WebAssembly.validate(
+    new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 123, 3, 2, 1, 0, 10, 10, 1, 8, 0, 65, 0, 253, 15, 253, 98, 11])
+  )
+  const threads = wasm && await (async () => {
+    try {
+      return typeof MessageChannel !== 'undefined' &&
+        new MessageChannel().port1.postMessage(new SharedArrayBuffer(1)) &&
+        WebAssembly.validate(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 4, 1, 96, 0, 0, 3, 2, 1, 0, 5, 4, 1, 3, 1, 1, 10, 11, 1, 9, 0, 65, 0, 254, 16, 2, 0, 26, 11]))
+    } catch (e) {
+      return false
+    }
+  })()
+  return { webgpu: !!webgpu, wasm, simd, threads }
+}
+
+// 根据浏览器能力获取 ort CDN 地址
+async function getOrtSrc() {
+  const prefix = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/`
+  const cap = await getCapabilities()
+  if (cap.webgpu) return `${prefix}ort.webgpu.min.js`
+  if (cap.wasm) {
+    if (cap.simd || cap.threads) return `${prefix}ort.wasm.min.js`
+    return `${prefix}ort.wasm-core.min.js`
+  }
+  return `${prefix}ort.min.js`
+}
+
+// 动态加载 ort script 标签
+function loadOnnxruntime() {
+  if (ortLoadPromise) return ortLoadPromise
+  if (typeof ort !== 'undefined') return Promise.resolve()
+
+  ortLoadPromise = new Promise(async (resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = await getOrtSrc()
+    script.onload = resolve
+    script.onerror = () => reject(new Error('加载 onnxruntime-web 失败'))
+    document.head.appendChild(script)
+  })
+  return ortLoadPromise
+}
 
 // 初始化 ONNX Runtime 会话
 async function initONNXSession(modelPath = '/model_quantized.onnx') {
@@ -16,16 +63,13 @@ async function initONNXSession(modelPath = '/model_quantized.onnx') {
 
   modelLoadPromise = (async () => {
     try {
+      console.log('正在加载 ONNX Runtime...')
+      await loadOnnxruntime()
+
       console.log('正在加载 ONNX 模型...')
-      // 全局配置，禁用JSEP
-      ort.env.webgpu = false;
-      ort.env.jsep = false;
       ort.env.wasm.proxy = true
-
-      // 配置 ONNX Runtime - 使用本地非多线程版本
       ort.env.wasm.numThreads = navigator.hardwareConcurrency || 4
-      ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.27.0/dist/'
-
+      ort.env.wasm.wasmPaths = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/`
 
       // 创建推理会话
       ortSession = await ort.InferenceSession.create(modelPath, {
