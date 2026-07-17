@@ -142,6 +142,13 @@ export default {
     loadSettings() {
       this.autoProcess = localStorage.getItem('rmbg_auto_process') || 'yes'
       this.previewMode = localStorage.getItem('rmbg_preview_mode') || 'comparison-only'
+      // 确保默认值写入 localStorage，供其他页面读取
+      if (!localStorage.getItem('rmbg_auto_process')) {
+        localStorage.setItem('rmbg_auto_process', this.autoProcess)
+      }
+      if (!localStorage.getItem('rmbg_preview_mode')) {
+        localStorage.setItem('rmbg_preview_mode', this.previewMode)
+      }
     }
   }
 }

@@ -301,7 +301,7 @@ export default {
               for (const type of item.types) {
                 if (type.startsWith('image/')) {
                   this.isReadingClipboard = false
-                  const autoProcess = localStorage.getItem('rmbg_auto_process') === 'yes'
+                  const autoProcess = (localStorage.getItem('rmbg_auto_process') || 'yes') === 'yes'
                   this.isProcessing = true
                   this.progress = 0
                   this.statusMessage = '正在读取剪贴板图片...'
