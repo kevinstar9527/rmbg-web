@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://rmbg.code-coffee.com/</loc>
+    <lastmod>2026-07-23</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://rmbg.code-coffee.com/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://rmbg.code-coffee.com/"/>
+  </url>
+  <url>
+    <loc>https://rmbg.code-coffee.com/#/history</loc>
+    <lastmod>2026-07-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://rmbg.code-coffee.com/#/history"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://rmbg.code-coffee.com/#/history"/>
+  </url>
+  <url>
+    <loc>https://rmbg.code-coffee.com/#/settings</loc>
+    <lastmod>2026-07-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://rmbg.code-coffee.com/#/settings"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://rmbg.code-coffee.com/#/settings"/>
+  </url>
+  <url>
+    <loc>https://rmbg.code-coffee.com/#/about</loc>
+    <lastmod>2026-07-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://rmbg.code-coffee.com/#/about"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://rmbg.code-coffee.com/#/about"/>
+  </url>
+  <url>
+    <loc>https://rmbg.code-coffee.com/#/feedback</loc>
+    <lastmod>2026-07-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://rmbg.code-coffee.com/#/feedback"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://rmbg.code-coffee.com/#/feedback"/>
+  </url>
+</urlset>

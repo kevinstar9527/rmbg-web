@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+Disallow: /assets/
+Disallow: /src/
+
+Sitemap: https://rmbg.code-coffee.com/sitemap.xml
+
+User-agent: Baiduspider
+Allow: /
+Disallow: /assets/
+Disallow: /src/
+Crawl-delay: 1
+
+User-agent: Googlebot
+Allow: /
+Disallow: /assets/
+Disallow: /src/
+Crawl-delay: 1
